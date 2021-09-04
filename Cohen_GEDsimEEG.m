@@ -14,7 +14,7 @@
 %%
 
 % a clear MATLAB workspace is a clear mental workspace
-close all; clear all, clc
+close all; clear, clc
 
 %%
 
@@ -227,6 +227,7 @@ xlabel('Time (a.u.)')
 % electrodes. It is obtained by passing the covariance matrix through the filter.
 filt_topo = covS*evecs(:,1);
 
+
 % Eigenvector sign uncertainty can cause a sign-flip, which is corrected for by 
 % forcing the largest-magnitude projection electrode to be positive.
 [~,se] = max(abs( filt_topo ));
@@ -243,9 +244,62 @@ topoplotIndie(filt_topo,EEG.chanlocs,'electrodes','off','numcontour',0);
 title('GED forward model')
 
 
+%% ICA
+
+% NOTE: This cell computes ICA based on the jade algorithm. It's not
+% discussed or shown in the paper, but you can uncomment this section if
+% you are curious. Make sure the jader() function is in the MATLAB path
+% (you can download it from the web if you don't have it).
+
+% ivecs = jader(EEG.data,40);
+% ic_scores = ivecs*EEG.data;
+% icmaps = pinv(ivecs');
+% evals = diag(icmaps*icmaps');
+% 
+% 
+% % plot the IC energy
+% figure(5), clf
+% subplot(231)
+% plot(evals,'ks-','markersize',10,'markerfacecolor','m')
+% axis square
+% set(gca,'xlim',[0 20.5])
+% title('ICA RMS')
+% xlabel('Component number'), ylabel('IC energy')
+% 
+% % component time series is eigenvector as spatial filter for data
+% comp_ts = ic_scores(1,:);%evecs(:,1)'*EEG.data;
+% 
+% % plot for comparison
+% 
+% % normalize time series (for visualization)
+% dipl_ts = dipole_data(diploc,:) / norm(dipole_data(diploc,:));
+% comp_ts = comp_ts / norm(comp_ts);
+% chan_ts = EEG.data(31,:) / norm(EEG.data(31,:));
+% 
+% 
+% % plot the time series
+% subplot(212), hold on
+% plot(EEG.times,.3+dipl_ts,'linew',2)
+% plot(EEG.times,.15+chan_ts)
+% plot(EEG.times,comp_ts)
+% legend({'Truth';'EEG channel';'ICA time series'})
+% set(gca,'ytick',[])
+% xlabel('Time (a.u.)')
+% 
+% 
+% % plot the maps
+% subplot(232)
+% topoplotIndie(lf.GainN(:,diploc), EEG.chanlocs,'numcontour',0,'electrodes','off','shading','interp');
+% title('Truth topomap')
+% 
+% subplot(233)
+% topoplotIndie(icmaps(1,:),EEG.chanlocs,'electrodes','off','numcontour',0);
+% title('ICA forward model')
+
+
 %% ----------------------------- %%
 %                                 %
-%   Example GED in complex data   %
+%   Example GED in richer data    %
 %                                 %
 %%% --------------------------- %%%
 
@@ -288,9 +342,10 @@ for triali=1:EEG.trials
     
     % back to time domain to get the source activity
     source_ts = 2*real( ifft(fc) )*EEG.pnts;
+    dipole_ts(:,triali) = source_ts;
     
     % simulate dipole data: all noise and replace target dipole with source_ts
-    dipole_data = randn(length(lf.Gain),EEG.pnts);
+    dipole_data = randn(length(lf.GainN),EEG.pnts);
     dipole_data(diploc,:) = .5*source_ts;
     % Note: the source time series has low amplitude to highlight the
     % sensitivity of GED. Increasing this gain to, e.g., 1 will show
@@ -299,6 +354,10 @@ for triali=1:EEG.trials
     % now project the dipole data through the forward model to the electrodes
     EEG.data(:,:,triali) = lf.GainN*dipole_data;
 end
+
+
+% power spectrum of the ground-truth source activity
+sourcepowerAve = mean(abs(fft(dipole_ts,[],1)).^2,2);
 
 %% topoplot of alpha power
 
@@ -410,10 +469,12 @@ set(gca,'clim',[1e8 1.5e9])
 
 
 
+
 subplot(212), cla, hold on
+plot(hz,sourcepowerAve(1:length(hz))/max(sourcepowerAve(1:length(hz))),'m','linew',3)
 plot(hz,comppowerAve(1:length(hz))/max(comppowerAve(1:length(hz))),'r','linew',3)
 plot(hz,channelpowerAve(31,1:length(hz))/max(channelpowerAve(31,1:length(hz))),'k','linew',3)
-legend({'Component','Electrode 31'},'box','off')
+legend({'Source','Component','Electrode 31'},'box','off')
 xlabel('Frequency (Hz)')
 ylabel('Power (norm to max power)')
 set(gca,'xlim',[0 80])
