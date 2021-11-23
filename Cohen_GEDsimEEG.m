@@ -1,8 +1,8 @@
 %%
 % 
 %  MATLAB code accompanying the paper:
-%     A tutorial on generalized eigendecomposition for 
-%     source separation in multichannel electrophysiology
+%     A tutorial on generalized eigendecomposition for denoising, 
+%     contrast enhancement, and dimension reduction in multichannel electrophysiology
 % 
 %   Mike X Cohen (mikexcohen@gmail.com)
 %
